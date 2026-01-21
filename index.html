@@ -242,12 +242,15 @@
     </div>
   </div>
 
-  <script>
+ <script>
     const tg = window.Telegram?.WebApp;
-    if (tg) tg.expand();
+    if (tg) {
+      tg.expand();
+      tg.ready();
+    }
 
-    // !!! ВАЖНО: Укажи здесь адрес своего сервера, где запущен бот !!!
-    const API_BASE = "https://ninety-tips-agree.loca.lt"; 
+    // !!! ВАЖНО: Каждый раз при перезапуске ngrok обновляй эту ссылку !!!
+    const API_BASE = "https://song-ongoing-education-approved.trycloudflare.com"; 
 
     let currentOrder = { amount: 50, price: 0, id: null };
     let pollInterval = null;
@@ -265,65 +268,100 @@
       const val = parseInt(document.getElementById('starsAmount').value);
       if (val < 50) { tg.showAlert("Минимум 50 звезд"); return; }
       currentOrder.amount = val;
-      currentOrder.price = val * 1.8;
+      currentOrder.price = val * 1.3; // Цена как в боте
       showLayer(2);
       moveCamera(3.5);
     }
 
+    // ИСПРАВЛЕННАЯ ФУНКЦИЯ ОПЛАТЫ
     async function processPay(method) {
       showLayer(3);
-      
-      // Имитация запроса к боту для создания заказа
-      // В реальности тут должен быть fetch(`${API_BASE}/createOrder?userId=${tg.initDataUnsafe.user.id}...`)
-      setTimeout(() => {
-        document.getElementById('pay-loader').classList.add('hidden');
-        document.getElementById('pay-content').classList.remove('hidden');
-        document.getElementById('finalPrice').innerText = currentOrder.price.toFixed(0) + " ₽";
-        document.getElementById('payLink').href = "https://1plat.ru/pay/example"; // Ссылка на оплату
-        
-        // ЗАПУСКАЕМ АВТО-ПРОВЕРКУ
-        startPolling();
-      }, 1500);
+      const userId = tg.initDataUnsafe?.user?.id || 0;
+
+      try {
+        // Вызываем новый эндпоинт, который мы добавили в Program.cs
+        const response = await fetch(`${API_BASE}/create-mini-app-payment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId: userId, 
+            starsCount: currentOrder.amount,
+            method: method
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.url) {
+          document.getElementById('pay-loader').classList.add('hidden');
+          document.getElementById('pay-content').classList.remove('hidden');
+          document.getElementById('finalPrice').innerText = currentOrder.price.toFixed(0) + " ₽";
+          
+          const payLink = document.getElementById('payLink');
+          payLink.href = data.url;
+          
+          // Открываем оплату во внешнем браузере или внутри TG
+          payLink.onclick = (e) => {
+            e.preventDefault();
+            tg.openLink(data.url);
+          };
+
+          startPolling(userId);
+        } else {
+          tg.showAlert("Ошибка: " + (data.message || "не удалось создать счет"));
+          backTo(2);
+        }
+      } catch (e) {
+        tg.showAlert("Сервер бота недоступен. Проверьте ngrok.");
+        backTo(2);
+      }
     }
 
-    function startPolling() {
+    // ИСПРАВЛЕННЫЙ ОПРОС СТАТУСА
+    function startPolling(userId) {
       if (pollInterval) clearInterval(pollInterval);
       
       pollInterval = setInterval(async () => {
         try {
-          // Запрос к твоему C# боту
-          // const res = await fetch(`${API_BASE}/checkStatus?userId=${tg.initDataUnsafe.user.id}`);
-          // const data = await res.json();
+          // Вызываем метод GetLastOrderForUserAsync через API
+          const res = await fetch(`${API_BASE}/check-payment?userId=${userId}`);
+          const data = await res.json();
           
-          // ДЛЯ ТЕСТА (имитация успеха через 10 сек):
-          const isPaid = false; // Бот должен вернуть true, когда увидит деньги в БД
-
-          if (isPaid) {
+          // Если в базе статус сменился на paid или completed
+          if (data.status === 'paid' || data.status === 'completed') {
             clearInterval(pollInterval);
             handleSuccess();
           }
         } catch (e) {
-          console.error("Ошибка опроса:", e);
+          console.error("Ошибка проверки статуса");
         }
-      }, 3000); // Опрос каждые 3 секунды
+      }, 3000); 
     }
 
     function handleSuccess() {
       explodeStar(currentOrder.amount);
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#FFD700', '#FFA500'] });
       showLayer(4);
-      if (tg) tg.sendData(JSON.stringify({ action: "completed", amount: currentOrder.amount }));
     }
 
-    function backTo(step) { showLayer(step); moveCamera(5); if(pollInterval) clearInterval(pollInterval); }
+    function backTo(step) { 
+      showLayer(step); 
+      moveCamera(5); 
+      if(pollInterval) clearInterval(pollInterval);
+      document.getElementById('pay-loader').classList.remove('hidden');
+      document.getElementById('pay-content').classList.add('hidden');
+    }
 
     function showLayer(step) {
       document.querySelectorAll('.ui-layer').forEach(l => l.classList.add('hidden'));
-      document.getElementById('step-' + step).classList.remove('hidden');
-      document.getElementById('step-' + step).classList.add('fade-in');
+      const el = document.getElementById('step-' + step);
+      if(el) {
+        el.classList.remove('hidden');
+        el.classList.add('fade-in');
+      }
     }
 
-    // --- THREE.JS СЦЕНА (Оставляем без изменений) ---
+    // --- THREE.JS СЦЕНА (БЕЗ ИЗМЕНЕНИЙ) ---
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, window.innerWidth / (window.innerHeight * 0.6), 0.1, 1000);
     camera.position.z = 5;
@@ -422,5 +460,4 @@
     });
   </script>
 </body>
-
 </html>
