@@ -274,52 +274,78 @@
     }
 
     // ИСПРАВЛЕННАЯ ФУНКЦИЯ ОПЛАТЫ
-   async function processPay(method) {
-      showLayer(3);
-      const userId = tg.initDataUnsafe?.user?.id || 0;
+  async function processPay(method) {
+    console.log("Начата обработка оплаты. Метод:", method);
+    showLayer(3); 
+    
+    // 1. Проверяем данные Telegram
+    if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
+        console.error("Данные пользователя Telegram не найдены!");
+        tg.showAlert("Ошибка: Данные Telegram не загружены. Перезапустите приложение.");
+        backTo(2);
+        return;
+    }
 
-      try {
-        const response = await fetch(`${API_BASE}/create-mini-app-payment`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            userId: userId, 
-            starsCount: currentOrder.amount,
-            method: method
-          })
+    const userId = tg.initDataUnsafe.user.id;
+    console.log("UserId для запроса:", userId);
+
+    try {
+        // 2. Отправляем запрос
+        // УБЕДИСЬ, ЧТО API_BASE У ТЕБЯ ПРАВИЛЬНЫЙ (без слеша в конце)
+        const url = `${API_BASE}/create-mini-app-payment`;
+        console.log("Отправка запроса на:", url);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ 
+                userId: userId, 
+                starsCount: currentOrder.amount,
+                method: method
+            })
         });
 
-        const data = await response.json();
+        console.log("Статус ответа сервера:", response.status);
 
-        // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-        // Ваш бэкенд возвращает { success: true, payUrl: "..." }
-        // Мы читаем именно эти поля
-        
-        if (data.success && data.payUrl) {
-          document.getElementById('pay-loader').classList.add('hidden');
-          document.getElementById('pay-content').classList.remove('hidden');
-          document.getElementById('finalPrice').innerText = currentOrder.price.toFixed(0) + " ₽";
-          
-          const payLink = document.getElementById('payLink');
-          payLink.href = data.payUrl; // Используем payUrl из ответа бэкенда
-          
-          payLink.onclick = (e) => {
-            e.preventDefault();
-            tg.openTelegramLink(data.payUrl); // Используем нативный метод Telegram
-          };
-
-          startPolling(userId);
-        } else {
-          console.error("Ошибка API:", data);
-          tg.showAlert("Ошибка: " + (data.message || "не удалось создать счет"));
-          backTo(2);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Сервер ответил ошибкой ${response.status}: ${errorText}`);
         }
-      } catch (e) {
-        console.error(e);
-        tg.showAlert("Ошибка соединения с сервером.");
+
+        const data = await response.json();
+        console.log("Данные от сервера:", data);
+
+        if (data.success && data.payUrl) {
+            // УСПЕХ: Показываем кнопку оплаты
+            document.getElementById('pay-loader').classList.add('hidden');
+            document.getElementById('pay-content').classList.remove('hidden');
+            document.getElementById('finalPrice').innerText = currentOrder.price.toFixed(0) + " ₽";
+            
+            const payLink = document.getElementById('payLink');
+            payLink.href = data.payUrl;
+            
+            payLink.onclick = (e) => {
+                e.preventDefault();
+                console.log("Открываю ссылку оплаты:", data.payUrl);
+                tg.openTelegramLink(data.payUrl);
+            };
+
+            startPolling(userId);
+        } else {
+            // СЕРВЕР ВЕРНУЛ success: false (например, кулдаун)
+            tg.showAlert(data.message || "Не удалось создать счет");
+            backTo(2);
+        }
+    } catch (e) {
+        // ОШИБКА СЕТИ ИЛИ СКРИПТА
+        console.error("Критическая ошибка в processPay:", e);
+        tg.showAlert("Критическая ошибка: " + e.message);
         backTo(2);
-      }
     }
+}
 
 
     // ИСПРАВЛЕННЫЙ ОПРОС СТАТУСА
@@ -466,6 +492,7 @@
   </script>
 </body>
 </html>
+
 
 
 
