@@ -291,19 +291,19 @@
         });
 
         const data = await response.json();
-
-        if (data.success && data.url) {
+        const url = data.pay_url || data.mini_app_invoice_url;
+        if (data.success && url) {
           document.getElementById('pay-loader').classList.add('hidden');
           document.getElementById('pay-content').classList.remove('hidden');
           document.getElementById('finalPrice').innerText = currentOrder.price.toFixed(0) + " ₽";
           
           const payLink = document.getElementById('payLink');
-          payLink.href = data.url;
+          payLink.href = url;
           
           // Открываем оплату во внешнем браузере или внутри TG
           payLink.onclick = (e) => {
             e.preventDefault();
-            tg.openLink(data.url);
+            tg.openLink(url);
           };
 
           startPolling(userId);
@@ -461,6 +461,7 @@
   </script>
 </body>
 </html>
+
 
 
 
