@@ -275,47 +275,51 @@
 
     // ИСПРАВЛЕННАЯ ФУНКЦИЯ ОПЛАТЫ
    async function processPay(method) {
-  showLayer(3);
-  const userId = tg.initDataUnsafe?.user?.id || 0;
+      showLayer(3);
+      const userId = tg.initDataUnsafe?.user?.id || 0;
 
-  try {
-    const response = await fetch(`${API_BASE}/create-mini-app-payment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        userId: userId, 
-        starsCount: currentOrder.amount,
-        method: method
-      })
-    });
+      try {
+        const response = await fetch(`${API_BASE}/create-mini-app-payment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId: userId, 
+            starsCount: currentOrder.amount,
+            method: method
+          })
+        });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    // Используем поле result.mini_app_invoice_url
-    const url = data.result?.mini_app_invoice_url || data.result?.pay_url;
+        // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+        // Ваш бэкенд возвращает { success: true, payUrl: "..." }
+        // Мы читаем именно эти поля
+        
+        if (data.success && data.payUrl) {
+          document.getElementById('pay-loader').classList.add('hidden');
+          document.getElementById('pay-content').classList.remove('hidden');
+          document.getElementById('finalPrice').innerText = currentOrder.price.toFixed(0) + " ₽";
+          
+          const payLink = document.getElementById('payLink');
+          payLink.href = data.payUrl; // Используем payUrl из ответа бэкенда
+          
+          payLink.onclick = (e) => {
+            e.preventDefault();
+            tg.openTelegramLink(data.payUrl); // Используем нативный метод Telegram
+          };
 
-    if (data.ok && url) {
-      document.getElementById('pay-loader').classList.add('hidden');
-      document.getElementById('pay-content').classList.remove('hidden');
-      document.getElementById('finalPrice').innerText = currentOrder.price.toFixed(0) + " ₽";
-      
-      const payLink = document.getElementById('payLink');
-      payLink.href = url;
-      payLink.onclick = (e) => {
-        e.preventDefault();
-        tg.openLink(url);
-      };
-
-      startPolling(userId);
-    } else {
-      tg.showAlert("Ошибка: не удалось создать счет");
-      backTo(2);
+          startPolling(userId);
+        } else {
+          console.error("Ошибка API:", data);
+          tg.showAlert("Ошибка: " + (data.message || "не удалось создать счет"));
+          backTo(2);
+        }
+      } catch (e) {
+        console.error(e);
+        tg.showAlert("Ошибка соединения с сервером.");
+        backTo(2);
+      }
     }
-  } catch (e) {
-    tg.showAlert("Сервер бота недоступен. Проверьте ngrok.");
-    backTo(2);
-  }
-}
 
 
     // ИСПРАВЛЕННЫЙ ОПРОС СТАТУСА
@@ -462,6 +466,7 @@
   </script>
 </body>
 </html>
+
 
 
 
