@@ -348,23 +348,33 @@
     let pollInterval = null;
     let purchaseTarget = { stars: 'me', premium: 'me' };
 
-    function switchTab(tab) {
-      document.querySelector('.switcher').style.display = 'flex';
-        currentOrder.type = tab;
-        document.getElementById('tab-stars-btn').classList.toggle('active', tab === 'stars');
-        document.getElementById('tab-premium-btn').classList.toggle('active', tab === 'premium');
-        document.getElementById('tab-stars').classList.toggle('active', tab === 'stars');
-        document.getElementById('tab-premium').classList.toggle('active', tab === 'premium');
-        
-        // Визуальный отклик звезды
-        if (tab === 'premium') {
-            gsap.to(star.material.color, { r: 0, g: 0.77, b: 1, duration: 0.5 }); // Голубой для према
-            gsap.to(star.material.emissive, { r: 0, g: 0.44, b: 1, duration: 0.5 });
-        } else {
-            gsap.to(star.material.color, { r: 1, g: 0.84, b: 0, duration: 0.5 }); // Золотой для звезд
-            gsap.to(star.material.emissive, { r: 1, g: 0.84, b: 0, duration: 0.5 });
-        }
+   function switchTab(tab) {
+     document.querySelector('.switcher').style.display = 'flex';
+    currentOrder.type = tab;
+    
+    // Переключение кнопок
+    document.getElementById('tab-stars-btn').classList.toggle('active', tab === 'stars');
+    document.getElementById('tab-premium-btn').classList.toggle('active', tab === 'premium');
+    
+    // Переключение контента
+    document.getElementById('tab-stars').classList.toggle('active', tab === 'stars');
+    document.getElementById('tab-premium').classList.toggle('active', tab === 'premium');
+
+    // При переключении всегда показываем 1-й шаг выбранной вкладки и скрываем остальные
+    document.querySelectorAll('.ui-layer').forEach(l => l.classList.add('hidden'));
+    if (tab === 'stars') {
+        document.getElementById('step-1').classList.remove('hidden');
+    } else {
+        document.getElementById('premium-step-1').classList.remove('hidden');
     }
+
+    // Визуальный эффект камеры и цвета (твой старый код)
+    if (tab === 'premium') {
+        gsap.to(star.material.color, { r: 0, g: 0.77, b: 1, duration: 0.5 });
+    } else {
+        gsap.to(star.material.color, { r: 1, g: 0.84, b: 0, duration: 0.5 });
+    }
+}
 
     function setTarget(tab, target, el) {
         purchaseTarget[tab] = target;
@@ -532,36 +542,56 @@
       showLayer(4);
     }
 
-    function backTo(step) { 
-        if (currentOrder.type === 'premium') {
-            switchTab('premium');
-            document.getElementById('premium-step-1').classList.remove('hidden');
-            document.getElementById('step-3').classList.add('hidden');
-        } else {
-            showLayer(step); 
-        }
-        moveCamera(5); 
-        if(pollInterval) clearInterval(pollInterval);
-        document.getElementById('pay-loader').classList.remove('hidden');
-        document.getElementById('pay-content').classList.add('hidden');
-    }
+function backTo(step) {
+    // Останавливаем опрос оплаты при возврате
+    if (pollInterval) clearInterval(pollInterval);
+    
+    // Сбрасываем лоадеры для следующего раза
+    document.getElementById('pay-loader').classList.remove('hidden');
+    document.getElementById('pay-content').classList.add('hidden');
 
-    function showLayer(step) {
-        // Скрываем абсолютно все слои во всех вкладках и общие
+    if (currentOrder.type === 'premium') {
+        // Если мы в премиуме, возвращаемся на его специфичные шаги
         document.querySelectorAll('.ui-layer').forEach(l => l.classList.add('hidden'));
-        
-        // Если мы переходим к оплате (3) или успеху (4), скрываем вкладки (меню выбора)
+        document.getElementById('tab-premium').classList.add('active');
+        const premStep = document.getElementById('premium-step-' + step);
+        if (premStep) {
+            premStep.classList.remove('hidden');
+            premStep.classList.add('fade-in');
+        }
+    } else {
+        // Если в звездах, используем стандартный showLayer
+        showLayer(step);
+    }
+    
+    moveCamera(5); // Возвращаем камеру
+}
+     function showLayer(step) {
+        // Скрываем все слои
+        document.querySelectorAll('.ui-layer').forEach(l => l.classList.add('hidden'));
+    
+        // Если переходим к оплате или успеху — скрываем меню выбора вкладок
         if (step === 3 || step === 4) {
+            document.querySelector('.switcher').style.display = 'none';
+            // Убеждаемся, что контент вкладок скрыт, чтобы не мешался под общим слоем
             document.getElementById('tab-stars').classList.remove('active');
             document.getElementById('tab-premium').classList.remove('active');
-            // Скрываем сам переключатель вкладок, чтобы не мешал на оплате
-            document.querySelector('.switcher').style.display = 'none';
+        } else {
+            // Если возвращаемся к шагам 1 или 2 — возвращаем меню вкладок
+            document.querySelector('.switcher').style.display = 'flex';
+            
+            // Активируем нужную вкладку в зависимости от типа заказа
+            if (currentOrder.type === 'stars') {
+                document.getElementById('tab-stars').classList.add('active');
+            } else {
+                document.getElementById('tab-premium').classList.add('active');
+            }
         }
     
         const el = document.getElementById('step-' + step);
-        if(el) { 
-            el.classList.remove('hidden'); 
-            el.classList.add('fade-in'); 
+        if (el) {
+            el.classList.remove('hidden');
+            el.classList.add('fade-in');
         }
     }
 
@@ -659,6 +689,7 @@
   </script>
 </body>
 </html>
+
 
 
 
