@@ -243,98 +243,95 @@
       <button id="tab-premium-btn" onclick="switchTab('premium')">Премиум</button>
     </div>
 
-    <div class="ui-container">
-      
-      <div id="tab-stars" class="tab-content active">
-          <div id="step-1" class="ui-layer">
-            <div class="card">
+   <div class="ui-container">
+  
+  <div id="tab-stars" class="tab-content active">
+      <div id="step-1" class="ui-layer">
+        <div class="card">
+          <div class="target-toggle">
+              <div class="active" onclick="setTarget('stars', 'me', this)">КУПИТЬ СЕБЕ</div>
+              <div onclick="setTarget('stars', 'friend', this)">ДЛЯ ДРУГА</div>
+          </div>
+          <input type="text" id="starsFriendUser" class="username-input" placeholder="@username">
+          <div style="text-align:center; opacity:0.6; margin-bottom:15px; font-size:12px; text-transform:uppercase;">Введите количество</div>
+          <input type="number" id="starsAmount" value="50" min="50">
+          <button class="btn btn-main" onclick="toStep2()">Продолжить</button>
+        </div>
+      </div>
+
+      <div id="step-2" class="ui-layer hidden">
+        <div class="card">
+          <div style="text-align:center; opacity:0.6; margin-bottom:20px; font-size:12px; text-transform:uppercase;">Выберите способ</div>
+          <button class="btn btn-sbp" onclick="processPay('sbp')">💠 Система СБП</button>
+          <button class="btn btn-crypto" onclick="processPay('crypto')">₿ Криптовалюта</button>
+          <button style="background:none; border:none; color:#555; width:100%; margin-top:15px;" onclick="backTo(1)">Назад</button>
+        </div>
+      </div>
+  </div>
+
+  <div id="tab-premium" class="tab-content">
+      <div id="premium-step-1" class="ui-layer">
+          <div class="card">
               <div class="target-toggle">
-                  <div class="active" onclick="setTarget('stars', 'me', this)">КУПИТЬ СЕБЕ</div>
-                  <div onclick="setTarget('stars', 'friend', this)">ДЛЯ ДРУГА</div>
+                  <div class="active" onclick="setTarget('premium', 'me', this)">КУПИТЬ СЕБЕ</div>
+                  <div onclick="setTarget('premium', 'friend', this)">ДЛЯ ДРУГА</div>
               </div>
-              <input type="text" id="starsFriendUser" class="username-input" placeholder="@username">
-              
-              <div style="text-align:center; opacity:0.6; margin-bottom:15px; font-size:12px; letter-spacing:1px; text-transform:uppercase;">Введите количество</div>
-              <input type="number" id="starsAmount" value="50" min="50">
-              <button class="btn btn-main" onclick="toStep2()">Продолжить</button>
-            </div>
-          </div>
-
-          <div id="step-2" class="ui-layer hidden">
-            <div class="card">
-              <div style="text-align:center; opacity:0.6; margin-bottom:20px; font-size:12px; text-transform:uppercase;">Выберите способ</div>
-              <button class="btn btn-sbp" onclick="processPay('sbp')">💠 Система СБП</button>
-              <button class="btn btn-crypto" onclick="processPay('crypto')">₿ Криптовалюта</button>
-              <button style="background:none; border:none; color:#555; width:100%; margin-top:15px;" onclick="backTo(1)">Назад</button>
-            </div>
-          </div>
-
-          <div id="step-3" class="ui-layer hidden">
-            <div class="card" style="text-align:center;">
-              <div id="pay-loader" style="display:flex; flex-direction:column; align-items:center; gap:15px;">
-                <div class="loader"></div>
-                <div style="font-size:14px;">Генерируем счет...</div>
+              <input type="text" id="premiumFriendUser" class="username-input" placeholder="@username">
+              <div class="premium-grid">
+                  <div class="premium-option" onclick="selectPremium(3, 1100, this)">
+                      <span class="months">3 МЕС.</span>
+                      <span class="price">1100 ₽</span>
+                  </div>
+                  <div class="premium-option active" onclick="selectPremium(6, 1600, this)">
+                      <span class="months">6 МЕС.</span>
+                      <span class="price">1600 ₽</span>
+                  </div>
+                  <div class="premium-option" onclick="selectPremium(12, 3000, this)">
+                      <span class="months">12 МЕС.</span>
+                      <span class="price">3000 ₽</span>
+                  </div>
               </div>
-              
-              <div id="pay-content" class="hidden">
-                <div style="font-size:12px; opacity:0.6;">К оплате</div>
-                <div class="price-tag" id="finalPrice">0 ₽</div>
-                <a id="payLink" href="#" target="_blank" class="btn btn-main" style="text-decoration:none; margin-bottom:12px;">Оплатить заказ</a>
-                
-                <div class="waiting-box">
-                    <div class="loader"></div>
-                    <div style="font-size:12px; letter-spacing:1px;">ОЖИДАЕМ ПОДТВЕРЖДЕНИЯ...</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div id="step-4" class="ui-layer hidden" style="text-align:center;">
-            <div style="font-size:60px; margin-bottom:10px;">✨</div>
-            <h2 style="margin:0;">Оплачено!</h2>
-            <p style="opacity:0.6;">Звезды уже летят к вам</p>
-            <button class="btn btn-main" style="margin-top:20px;" onclick="tg.close()">Вернуться в бот</button>
+              <button class="btn btn-premium" onclick="toPremiumStep2()">Продолжить</button>
           </div>
       </div>
 
-      <div id="tab-premium" class="tab-content">
-          <div id="premium-step-1" class="ui-layer">
-              <div class="card">
-                  <div class="target-toggle">
-                      <div class="active" onclick="setTarget('premium', 'me', this)">КУПИТЬ СЕБЕ</div>
-                      <div onclick="setTarget('premium', 'friend', this)">ДЛЯ ДРУГА</div>
-                  </div>
-                  <input type="text" id="premiumFriendUser" class="username-input" placeholder="@username">
-      
-                  <div class="premium-grid">
-                      <div class="premium-option" onclick="selectPremium(3, 1100, this)">
-                          <span class="months">3 МЕС.</span>
-                          <span class="price">1100 ₽</span>
-                      </div>
-                      <div class="premium-option active" onclick="selectPremium(6, 1600, this)">
-                          <span class="months">6 МЕС.</span>
-                          <span class="price">1600 ₽</span>
-                      </div>
-                      <div class="premium-option" onclick="selectPremium(12, 3000, this)">
-                          <span class="months">12 МЕС.</span>
-                          <span class="price">3000 ₽</span>
-                      </div>
-                  </div>
-                  <button class="btn btn-premium" onclick="toPremiumStep2()">Продолжить</button>
-              </div>
-          </div>
-      
-          <div id="premium-step-2" class="ui-layer hidden">
-              <div class="card">
-                  <div style="text-align:center; opacity:0.6; margin-bottom:20px; font-size:12px; text-transform:uppercase;">Выберите способ</div>
-                  <button class="btn btn-sbp" onclick="processPremiumPay('sbp')">💠 Система СБП</button>
-                  <button class="btn btn-crypto" onclick="processPremiumPay('crypto')">₿ Криптовалюта</button>
-                  <button style="background:none; border:none; color:#555; width:100%; margin-top:15px;" onclick="backToPremium(1)">Назад</button>
-              </div>
+      <div id="premium-step-2" class="ui-layer hidden">
+          <div class="card">
+            <div style="text-align:center; opacity:0.6; margin-bottom:20px; font-size:12px; text-transform:uppercase;">Выберите способ</div>
+            <button class="btn btn-sbp" onclick="processPremiumPay('sbp')">💠 Система СБП</button>
+            <button class="btn btn-crypto" onclick="processPremiumPay('crypto')">₿ Криптовалюта</button>
+            <button style="background:none; border:none; color:#555; width:100%; margin-top:15px;" onclick="backToPremium(1)">Назад</button>
           </div>
       </div>
+  </div>
 
+  <div id="step-3" class="ui-layer hidden">
+    <div class="card" style="text-align:center;">
+      <div id="pay-loader" style="display:flex; flex-direction:column; align-items:center; gap:15px;">
+        <div class="loader"></div>
+        <div style="font-size:14px;">Генерируем счет...</div>
+      </div>
+      
+      <div id="pay-content" class="hidden">
+        <div style="font-size:12px; opacity:0.6;">К оплате</div>
+        <div class="price-tag" id="finalPrice">0 ₽</div>
+        <a id="payLink" href="#" target="_blank" class="btn btn-main">Оплатить заказ</a>
+        <div class="waiting-box">
+            <div class="loader"></div>
+            <div style="font-size:12px; letter-spacing:1px;">ОЖИДАЕМ ПОДТВЕРЖДЕНИЯ...</div>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <div id="step-4" class="ui-layer hidden" style="text-align:center;">
+    <div style="font-size:60px; margin-bottom:10px;">✨</div>
+    <h2 style="margin:0;">Оплачено!</h2>
+    <p style="opacity:0.6;">Заказ успешно выполнен</p>
+    <button class="btn btn-main" style="margin-top:20px;" onclick="tg.close()">Вернуться в бот</button>
+  </div>
+
+</div>
   </div>
 
  <script>
@@ -352,6 +349,7 @@
     let purchaseTarget = { stars: 'me', premium: 'me' };
 
     function switchTab(tab) {
+      document.querySelector('.switcher').style.display = 'flex';
         currentOrder.type = tab;
         document.getElementById('tab-stars-btn').classList.toggle('active', tab === 'stars');
         document.getElementById('tab-premium-btn').classList.toggle('active', tab === 'premium');
@@ -420,7 +418,7 @@
             targetUsername: targetUsername
         });
     }
-   function toPremiumStep2() {
+  function toPremiumStep2() {
     document.getElementById('premium-step-1').classList.add('hidden');
     document.getElementById('premium-step-2').classList.remove('hidden');
     document.getElementById('premium-step-2').classList.add('fade-in');
@@ -428,8 +426,8 @@
 }
    function backToPremium(step) {
     if (step === 1) {
-        document.getElementById('premium-step-2').classList.add('hidden');
-        document.getElementById('premium-step-1').classList.remove('hidden');
+       document.getElementById('premium-step-2').classList.add('hidden');
+    document.getElementById('premium-step-1').classList.remove('hidden');
         moveCamera(5);
     }
 }
@@ -549,9 +547,22 @@
     }
 
     function showLayer(step) {
-      document.querySelectorAll('.ui-layer').forEach(l => l.classList.add('hidden'));
-      const el = document.getElementById('step-' + step);
-      if(el) { el.classList.remove('hidden'); el.classList.add('fade-in'); }
+        // Скрываем абсолютно все слои во всех вкладках и общие
+        document.querySelectorAll('.ui-layer').forEach(l => l.classList.add('hidden'));
+        
+        // Если мы переходим к оплате (3) или успеху (4), скрываем вкладки (меню выбора)
+        if (step === 3 || step === 4) {
+            document.getElementById('tab-stars').classList.remove('active');
+            document.getElementById('tab-premium').classList.remove('active');
+            // Скрываем сам переключатель вкладок, чтобы не мешал на оплате
+            document.querySelector('.switcher').style.display = 'none';
+        }
+    
+        const el = document.getElementById('step-' + step);
+        if(el) { 
+            el.classList.remove('hidden'); 
+            el.classList.add('fade-in'); 
+        }
     }
 
     // --- THREE.JS СЦЕНА (БЕЗ ИЗМЕНЕНИЙ) ---
@@ -648,4 +659,5 @@
   </script>
 </body>
 </html>
+
 
