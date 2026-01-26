@@ -522,6 +522,7 @@
             backTo(payload.orderType === 'stars' ? 2 : 1);
         }
     }
+   let pollingInterval = null;
    function startPolling(userId) {
         if (pollingInterval) clearInterval(pollingInterval);
         
