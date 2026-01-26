@@ -256,18 +256,40 @@
               
               <div style="text-align:center; opacity:0.6; margin-bottom:15px; font-size:12px; letter-spacing:1px; text-transform:uppercase;">Введите количество</div>
               <input type="number" id="starsAmount" value="50" min="50">
-              <button class="btn btn-main" onclick="toStep2()">Продолжить</button>
+              <button class="btn btn-main" onclick="">Продолжить</button>
             </div>
           </div>
 
-          <div id="step-2" class="ui-layer hidden">
-            <div class="card">
-              <div style="text-align:center; opacity:0.6; margin-bottom:20px; font-size:12px; text-transform:uppercase;">Выберите способ</div>
-              <button class="btn btn-sbp" onclick="processPay('sbp')">💠 Система СБП</button>
-              <button class="btn btn-crypto" onclick="processPay('crypto')">₿ Криптовалюта</button>
-              <button style="background:none; border:none; color:#555; width:100%; margin-top:15px;" onclick="backTo(1)">Назад</button>
-            </div>
-          </div>
+        <!-- STEP 2 — ЗВЁЗДЫ -->
+<div id="step-2-stars" class="ui-layer hidden">
+  <div class="card">
+    <div style="text-align:center; opacity:0.6; margin-bottom:20px; font-size:12px; text-transform:uppercase;">
+      Способ оплаты — Звёзды
+    </div>
+
+    <button class="btn btn-sbp" onclick="processPay('sbp')">💠 СБП</button>
+    <button class="btn btn-crypto" onclick="processPay('crypto')">₿ Криптовалюта</button>
+
+    <button style="background:none;border:none;color:#555;width:100%;margin-top:15px;"
+            onclick="backToStars()">Назад</button>
+  </div>
+</div>
+
+<!-- STEP 2 — PREMIUM -->
+<div id="step-2-premium" class="ui-layer hidden">
+  <div class="card">
+    <div style="text-align:center; opacity:0.6; margin-bottom:20px; font-size:12px; text-transform:uppercase;">
+      Способ оплаты — Premium
+    </div>
+
+    <button class="btn btn-premium" onclick="processPay('sbp')">
+      💎 Оплатить Premium (СБП)
+    </button>
+
+    <button style="background:none;border:none;color:#555;width:100%;margin-top:15px;"
+            onclick="backToPremium()">Назад</button>
+  </div>
+</div>
 
           <div id="step-3" class="ui-layer hidden">
             <div class="card" style="text-align:center;">
@@ -386,10 +408,27 @@
       if (val < 50) { tg.showAlert("Минимум 50 звезд"); return; }
       currentOrder.amount = val;
       currentOrder.price = val * 1.3; 
-      showLayer(2);
+     showStarsStep2();
       moveCamera(3.5);
     }
-  
+  function hideAllSteps() {
+  document.querySelectorAll('.ui-layer').forEach(l => l.classList.add('hidden'));
+}
+
+function showStarsStep2() {
+  hideAllSteps();
+  document.getElementById('step-2-stars').classList.remove('hidden');
+}
+
+function showPremiumStep2() {
+  hideAllSteps();
+  document.getElementById('step-2-premium').classList.remove('hidden');
+}
+
+function showPayStep() {
+  hideAllSteps();
+  document.getElementById('step-3').classList.remove('hidden');
+}
 
    async function processPay(method) {
         // Определяем юзернейм
@@ -417,22 +456,24 @@ paymentLock = true;
             method: method,
             targetUsername: targetUsername
         });
+     showPayStep();
     }
 
-   async function processPremiumPay() {
-    let targetUsername = null;
+  async function processPremiumPay() {
+  let targetUsername = null;
 
-    if (purchaseTarget.premium === 'friend') {
-        targetUsername = document.getElementById('premiumFriendUser').value;
-        if (!targetUsername) {
-            tg.showAlert("Пожалуйста, введите @username друга");
-            return;
-        }
+  if (purchaseTarget.premium === 'friend') {
+    targetUsername = document.getElementById('premiumFriendUser').value;
+    if (!targetUsername) {
+      tg.showAlert("Пожалуйста, введите @username друга");
+      return;
     }
+  }
 
-    // ⬅️ ВАЖНО: не создаём счёт сразу
-    currentOrder.type = 'premium';
-    showLayer(2); // показываем экран выбора способа оплаты
+  currentOrder.type = 'premium';
+
+  // ⬅️ Показываем СВОЙ экран оплаты Premium
+  showPremiumStep2();
 }
 
    async function createPaymentRequest(payload) {
@@ -467,7 +508,15 @@ paymentLock = true;
                 const finalPrice = data.amount || (payload.orderType === 'stars' ? payload.starsCount * 1.3 : premiumOrder.price);
                 document.getElementById('finalPrice').innerText = Math.round(finalPrice) + " ₽";
                 
-                const payLink = document.getElementById('payLink');
+                payLink.classList.remove('btn-main', 'btn-premium');
+
+                if (payload.orderType === 'premium') {
+                  payLink.classList.add('btn-premium');
+                  payLink.innerText = '💎 Оплатить Premium';
+                } else {
+                  payLink.classList.add('btn-main');
+                  payLink.innerText = '⭐ Оплатить заказ';
+                }
                 
                 // Главный фикс: вешаем событие напрямую
                 payLink.onclick = function(e) {
@@ -514,6 +563,15 @@ paymentLock = true;
       showLayer(4);
     }
 
+   function backToStars() {
+  hideAllSteps();
+  document.getElementById('step-1').classList.remove('hidden');
+}
+
+function backToPremium() {
+  hideAllSteps();
+  document.getElementById('premium-step-1').classList.remove('hidden');
+}
     function backTo(step) { 
       paymentLock = false;
         if (currentOrder.type === 'premium') {
@@ -629,6 +687,7 @@ paymentLock = true;
   </script>
 </body>
 </html>
+
 
 
 
