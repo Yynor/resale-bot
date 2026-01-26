@@ -383,6 +383,7 @@
       moveCamera(3.5);
     }
    async function handlePayment() {
+        // 1. Проверяем выбранный метод оплаты
         const methodCard = document.querySelector('.method-card.active');
         if (!methodCard) {
             alert('Пожалуйста, выберите способ оплаты');
@@ -393,20 +394,34 @@
         const btn = document.querySelector('.pay-button');
         const originalText = btn.innerText;
 
-        // Собираем данные
+        // 2. Собираем данные (ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЕ ПЕРЕМЕННЫЕ)
+        // В твоем скрипте данные лежат в объектах currentOrder и premiumOrder
         const orderData = {
             userId: window.Telegram.WebApp.initDataUnsafe?.user?.id || 6238117319,
-            orderType: currentType, // 'stars' или 'premium'
-            starsCount: currentType === 'stars' ? selectedStars : null,
-            months: currentType === 'premium' ? selectedMonths : null,
+            orderType: currentOrder.type, 
+            starsCount: currentOrder.type === 'stars' ? currentOrder.amount : null,
+            months: currentOrder.type === 'premium' ? premiumOrder.months : null,
             method: method,
-            targetUsername: document.getElementById('gift-username')?.value || null
+            targetUsername: null
         };
+
+        // 3. Логика получения юзернейма друга (если выбрано "Другу")
+        // У тебя в скрипте инпуты называются starsFriendUser и premiumFriendUser
+        if (purchaseTarget[currentOrder.type] === 'friend') {
+            const inputId = currentOrder.type === 'stars' ? 'starsFriendUser' : 'premiumFriendUser';
+            const val = document.getElementById(inputId).value;
+            if(!val) {
+                alert("Введите юзернейм друга!");
+                return;
+            }
+            orderData.targetUsername = val;
+        }
 
         try {
             btn.disabled = true;
             btn.innerText = 'Генерация ссылки...';
 
+            // Отправляем запрос
             const response = await fetch('/create-mini-app-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -416,12 +431,12 @@
             const result = await response.json();
             console.log("Ответ сервера:", result);
 
-            // ПРОВЕРКА: бэкенд присылает payUrl
+            // 4. Открываем ссылку
             if (result.success && result.payUrl) {
-                // Используем API Телеграма для открытия ссылок
+                // Главный метод для открытия внутри Telegram
                 window.Telegram.WebApp.openLink(result.payUrl);
                 
-                // На всякий случай дублируем для тестов в браузере
+                // На всякий случай дублируем (если открыто в браузере)
                 if (!window.Telegram.WebApp.initData) {
                     window.location.href = result.payUrl;
                 }
@@ -430,41 +445,68 @@
             }
         } catch (e) {
             console.error("Ошибка запроса:", e);
-            alert('Ошибка связи с сервером');
+            alert('Ошибка связи с сервером. Проверьте консоль.');
         } finally {
             btn.disabled = false;
             btn.innerText = originalText;
         }
     }
 
-    async function processPay(method) {
-        const username = purchaseTarget.stars === 'friend' ? document.getElementById('starsFriendUser').value : "";
+   async function processPay(method) {
+        // Определяем юзернейм
+        let targetUsername = null;
+        if (purchaseTarget.stars === 'friend') {
+            targetUsername = document.getElementById('starsFriendUser').value;
+            if (!targetUsername) {
+                tg.showAlert("Пожалуйста, введите @username друга");
+                return;
+            }
+        }
+
+        // Собираем пейлоад
         await createPaymentRequest({
-            userId: tg.initDataUnsafe.user.id,
-            starsCount: currentOrder.amount,
+            userId: tg.initDataUnsafe?.user?.id || 0, // ID из телеграм
+            orderType: 'stars',
+            starsCount: parseInt(currentOrder.amount),
             method: method,
-            targetUsername: username,
-            orderType: 'stars'
+            targetUsername: targetUsername
         });
     }
 
-    async function processPremiumPay() {
-        const username = purchaseTarget.premium === 'friend' ? document.getElementById('premiumFriendUser').value : "";
-        // Для премиума переходим на шаг оплаты (имитируем выбор СБП для простоты или можно добавить выбор)
-        currentOrder.price = premiumOrder.price * 100; // Примерная конвертация в рубли или как у тебя в боте
-        showLayer(3);
+   async function processPremiumPay() {
+        // Определяем юзернейм
+        let targetUsername = null;
+        if (purchaseTarget.premium === 'friend') {
+            targetUsername = document.getElementById('premiumFriendUser').value;
+            if (!targetUsername) {
+                tg.showAlert("Пожалуйста, введите @username друга");
+                return;
+            }
+        }
+
+        // Показываем лоадер
+        showLayer(3); 
+        
+        // Собираем пейлоад
         await createPaymentRequest({
-            userId: tg.initDataUnsafe.user.id,
+            userId: tg.initDataUnsafe?.user?.id || 0,
+            orderType: 'premium',
             months: premiumOrder.months,
-            method: 'sbp',
-            targetUsername: username,
-            orderType: 'premium'
+            method: 'sbp', // Для премиума пока только СБП по твоей логике
+            targetUsername: targetUsername
         });
     }
 
     async function createPaymentRequest(payload) {
-        showLayer(3);
+        showLayer(3); // Переключаем на экран загрузки
+        
+        // Скрываем кнопку и показываем лоадер
+        document.getElementById('pay-loader').classList.remove('hidden');
+        document.getElementById('pay-content').classList.add('hidden');
+
         try {
+            console.log("Отправка данных:", payload);
+
             const response = await fetch(`${API_BASE}/create-mini-app-payment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -472,22 +514,46 @@
             });
 
             const data = await response.json();
+            console.log("Ответ сервера:", data);
+
             if (data.success && data.payUrl) {
+                // 1. Скрываем лоадер, показываем контент
                 document.getElementById('pay-loader').classList.add('hidden');
                 document.getElementById('pay-content').classList.remove('hidden');
-                document.getElementById('finalPrice').innerText = payload.orderType === 'stars' ? (payload.starsCount * 1.3).toFixed(0) + " ₽" : payload.months + " мес. Premium";
-                
-                const payLink = document.getElementById('payLink');
-                payLink.href = data.payUrl;
-                payLink.onclick = (e) => { e.preventDefault(); tg.openTelegramLink(data.payUrl); };
 
+                // 2. Обновляем цену
+                let displayPrice = "";
+                if (payload.orderType === 'stars') {
+                    displayPrice = (payload.starsCount * 1.3).toFixed(0) + " ₽";
+                } else {
+                    // Цены как в C# коде
+                    let priceUsd = 16;
+                    if (payload.months === 3) priceUsd = 13;
+                    if (payload.months === 12) priceUsd = 30;
+                    displayPrice = (priceUsd * 105).toFixed(0) + " ₽"; // Курс 105 как в C#
+                }
+                document.getElementById('finalPrice').innerText = displayPrice;
+                
+                // 3. НАСТРАИВАЕМ КНОПКУ ОПЛАТЫ
+                const payLink = document.getElementById('payLink');
+                payLink.href = data.payUrl; // Для красоты и браузера
+                
+                // ВАЖНО: Перехватываем клик для Telegram API
+                payLink.onclick = (e) => { 
+                    e.preventDefault(); 
+                    console.log("Открываю ссылку:", data.payUrl);
+                    tg.openTelegramLink(data.payUrl); 
+                };
+
+                // 4. Запускаем проверку статуса
                 startPolling(payload.userId);
             } else {
                 tg.showAlert(data.message || "Ошибка создания счета");
-                backTo(currentOrder.type === 'stars' ? 2 : 1);
+                backTo(payload.orderType === 'stars' ? 2 : 1);
             }
         } catch (e) {
-            tg.showAlert("Ошибка сети");
+            console.error(e);
+            tg.showAlert("Ошибка сети или сервера");
             backTo(1);
         }
     }
@@ -626,4 +692,5 @@
   </script>
 </body>
 </html>
+
 
