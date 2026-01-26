@@ -367,11 +367,16 @@
         document.getElementById(inputId).style.display = target === 'friend' ? 'block' : 'none';
     }
 
-    function selectPremium(months, price, el) {
+    function selectPremium(months, price) {
+        // Сохраняем выбор в глобальную переменную
         premiumOrder.months = months;
         premiumOrder.price = price;
-        document.querySelectorAll('.premium-option').forEach(opt => opt.classList.remove('active'));
-        el.classList.add('active');
+
+        // Визуальное выделение карточек
+        document.querySelectorAll('.premium-card').forEach(card => card.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        
+        console.log(`Выбран тариф: ${months} мес. за ${price} ₽`);
     }
 
     function toStep2() {
@@ -429,19 +434,19 @@
         });
     }
 
-    async function createPaymentRequest(payload) {
-        showLayer(3); // Переключаем на экран загрузки
-        
-        // Получаем элементы
-        const payLoader = document.getElementById('pay-loader');
-        const payContent = document.getElementById('pay-content');
-        
-        // Сбрасываем состояние UI
-        payLoader.classList.remove('hidden');
-        payContent.classList.add('hidden');
+   async function createPaymentRequest(payload) {
+        // Проверка данных перед отправкой
+        if (payload.orderType === 'premium' && !payload.months) {
+            tg.showAlert("Пожалуйста, выберите тариф Premium!");
+            return;
+        }
+
+        showLayer(3); // Включаем экран загрузки
+        document.getElementById('pay-loader').classList.remove('hidden');
+        document.getElementById('pay-content').classList.add('hidden');
 
         try {
-            console.log("Отправка данных:", payload);
+            console.log("Отправка запроса на сервер:", payload);
 
             const response = await fetch(`${API_BASE}/create-mini-app-payment`, {
                 method: 'POST',
@@ -449,60 +454,42 @@
                 body: JSON.stringify(payload)
             });
 
-            if (!response.ok) {
-                throw new Error(`Ошибка сети: ${response.status}`);
-            }
-
             const data = await response.json();
             console.log("Ответ сервера:", data);
 
             if (data.success && data.payUrl) {
-                // 1. Успех: показываем кнопку
-                payLoader.classList.add('hidden');
-                payContent.classList.remove('hidden');
+                // Показываем контент с кнопкой
+                document.getElementById('pay-loader').classList.add('hidden');
+                document.getElementById('pay-content').classList.remove('hidden');
 
-                // 2. Обновляем цену на экране
-                let displayPrice = "";
-                if (payload.orderType === 'stars') {
-                    displayPrice = (payload.starsCount * 1.3).toFixed(0) + " ₽";
-                } else {
-                    let priceUsd = 16;
-                    if (payload.months === 3) priceUsd = 13;
-                    if (payload.months === 12) priceUsd = 30;
-                    displayPrice = (priceUsd * 105).toFixed(0) + " ₽"; 
-                }
-                document.getElementById('finalPrice').innerText = displayPrice;
+                // Ставим цену (если сервер не прислал, считаем сами для красоты)
+                const finalPrice = data.amount || (payload.orderType === 'stars' ? payload.starsCount * 1.3 : premiumOrder.price);
+                document.getElementById('finalPrice').innerText = Math.round(finalPrice) + " ₽";
                 
-                // 3. НАСТРАИВАЕМ КНОПКУ (САМАЯ ВАЖНАЯ ЧАСТЬ)
                 const payLink = document.getElementById('payLink');
                 
-                // Устанавливаем href для наглядности (браузер покажет ссылку при наведении)
-                payLink.href = data.payUrl;
-                
-                // Перезаписываем onclick
-                payLink.onclick = function(e) { 
-                    e.preventDefault(); // Отменяем стандартный переход, чтобы управлять логикой
-                    console.log("Клик по кнопке оплаты. Ссылка:", data.payUrl);
+                // Главный фикс: вешаем событие напрямую
+                payLink.onclick = function(e) {
+                    e.preventDefault();
+                    console.log("Открываю оплату:", data.payUrl);
                     
-                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
-                        // Если мы внутри Telegram
-                        window.Telegram.WebApp.openLink(data.payUrl);
+                    if (tg.openLink) {
+                        tg.openLink(data.payUrl);
                     } else {
-                        // Если мы тестируем в браузере
                         window.open(data.payUrl, '_blank');
                     }
                 };
 
-                // 4. Запускаем проверку статуса
+                // Начинаем опрос сервера о статусе платежа
                 startPolling(payload.userId);
             } else {
-                tg.showAlert(data.message || "Ошибка создания счета");
-                backTo(payload.orderType === 'stars' ? 2 : 1);
+                throw new Error(data.message || "Ошибка сервера при создании счета");
             }
         } catch (e) {
-            console.error("Ошибка createPaymentRequest:", e);
-            tg.showAlert("Ошибка соединения с сервером");
-            backTo(1);
+            console.error("Критическая ошибка:", e);
+            tg.showAlert("Ошибка: " + e.message);
+            // Возвращаем пользователя назад
+            backTo(payload.orderType === 'stars' ? 2 : 1);
         }
     }
     function startPolling(userId) {
@@ -639,6 +626,7 @@
   </script>
 </body>
 </html>
+
 
 
 
