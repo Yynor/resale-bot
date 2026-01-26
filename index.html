@@ -339,8 +339,10 @@
     let premiumOrder = { months: 6, price: 16 };
     let pollInterval = null;
     let purchaseTarget = { stars: 'me', premium: 'me' };
+   let paymentLock = false;
 
     function switchTab(tab) {
+       if (paymentLock) return;
         currentOrder.type = tab;
         document.getElementById('tab-stars-btn').classList.toggle('active', tab === 'stars');
         document.getElementById('tab-premium-btn').classList.toggle('active', tab === 'premium');
@@ -391,48 +393,47 @@
 
    async function processPay(method) {
         // Определяем юзернейм
-        let targetUsername = null;
-        if (purchaseTarget.stars === 'friend') {
-            targetUsername = document.getElementById('starsFriendUser').value;
-            if (!targetUsername) {
-                tg.showAlert("Пожалуйста, введите @username друга");
-                return;
-            }
-        }
+      if (currentOrder.type === 'stars' && purchaseTarget.stars === 'friend') {
+    targetUsername = document.getElementById('starsFriendUser').value;
+    if (!targetUsername) {
+        tg.showAlert("Пожалуйста, введите @username друга");
+        return;
+    }
+}
 
+if (currentOrder.type === 'premium' && purchaseTarget.premium === 'friend') {
+    targetUsername = document.getElementById('premiumFriendUser').value;
+    if (!targetUsername) {
+        tg.showAlert("Пожалуйста, введите @username друга");
+        return;
+    }
+}
+paymentLock = true;
         // Собираем пейлоад
         await createPaymentRequest({
             userId: tg.initDataUnsafe?.user?.id || 0, // ID из телеграм
-            orderType: 'stars',
-            starsCount: parseInt(currentOrder.amount),
+           orderType: currentOrder.type,
+            ...(currentOrder.type === 'stars'  ? { starsCount: parseInt(currentOrder.amount) } : { months: premiumOrder.months }),
             method: method,
             targetUsername: targetUsername
         });
     }
 
    async function processPremiumPay() {
-        // Определяем юзернейм
-        let targetUsername = null;
-        if (purchaseTarget.premium === 'friend') {
-            targetUsername = document.getElementById('premiumFriendUser').value;
-            if (!targetUsername) {
-                tg.showAlert("Пожалуйста, введите @username друга");
-                return;
-            }
-        }
+    let targetUsername = null;
 
-        // Показываем лоадер
-        showLayer(3); 
-        
-        // Собираем пейлоад
-        await createPaymentRequest({
-            userId: tg.initDataUnsafe?.user?.id || 0,
-            orderType: 'premium',
-            months: premiumOrder.months,
-            method: 'sbp', // Для премиума пока только СБП по твоей логике
-            targetUsername: targetUsername
-        });
+    if (purchaseTarget.premium === 'friend') {
+        targetUsername = document.getElementById('premiumFriendUser').value;
+        if (!targetUsername) {
+            tg.showAlert("Пожалуйста, введите @username друга");
+            return;
+        }
     }
+
+    // ⬅️ ВАЖНО: не создаём счёт сразу
+    currentOrder.type = 'premium';
+    showLayer(2); // показываем экран выбора способа оплаты
+}
 
    async function createPaymentRequest(payload) {
         // Проверка данных перед отправкой
@@ -507,12 +508,14 @@
     }
 
     function handleSuccess() {
+      paymentLock = false;
       explodeStar();
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#FFD700', '#FFA500'] });
       showLayer(4);
     }
 
     function backTo(step) { 
+      paymentLock = false;
         if (currentOrder.type === 'premium') {
             switchTab('premium');
             document.getElementById('premium-step-1').classList.remove('hidden');
@@ -626,6 +629,7 @@
   </script>
 </body>
 </html>
+
 
 
 
