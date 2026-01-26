@@ -522,18 +522,34 @@
             backTo(payload.orderType === 'stars' ? 2 : 1);
         }
     }
-    function startPolling(userId) {
-      if (pollInterval) clearInterval(pollInterval);
-      pollInterval = setInterval(async () => {
-        try {
-          const res = await fetch(`${API_BASE}/check-payment?userId=${userId}`);
-          const data = await res.json();
-          if (data.status === 'paid' || data.status === 'completed') {
-            clearInterval(pollInterval);
-            handleSuccess();
-          }
-        } catch (e) {}
-      }, 3000); 
+   function startPolling(userId) {
+        if (pollingInterval) clearInterval(pollingInterval);
+        
+        pollingInterval = setInterval(async () => {
+            try {
+                // Обрати внимание: URL должен быть /check-payment, как в логах твоего бэкенда
+                const res = await fetch(`${API_BASE}/check-payment?userId=${userId}`);
+                const data = await res.json();
+
+                console.log("Статус заказа:", data.status);
+
+                // Проверяем оба варианта (в зависимости от того, что пишет бэкенд в БД)
+                if (data.status === 'paid' || data.status === 'CONFIRMED') {
+                    clearInterval(pollingInterval);
+                    
+                    // Эффекты успеха
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                    explodeStar(); // Наша 3D анимация
+
+                    tg.showAlert("Оплата получена! Спасибо за покупку.");
+                    
+                    // Закрываем приложение через 3 секунды
+                    setTimeout(() => tg.close(), 3000);
+                }
+            } catch(e) {
+                console.error("Ошибка опроса:", e);
+            }
+        }, 3000); // Опрос каждые 3 секунды
     }
 
     function handleSuccess() {
@@ -689,6 +705,7 @@ function backTo(step) {
   </script>
 </body>
 </html>
+
 
 
 
