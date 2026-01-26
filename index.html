@@ -522,36 +522,38 @@
             backTo(payload.orderType === 'stars' ? 2 : 1);
         }
     }
-   let pollingInterval = null;
-   function startPolling(userId) {
-        if (pollingInterval) clearInterval(pollingInterval);
-        
-        pollingInterval = setInterval(async () => {
-            try {
-                // Обрати внимание: URL должен быть /check-payment, как в логах твоего бэкенда
-                const res = await fetch(`${API_BASE}/check-payment?userId=${userId}`);
-                const data = await res.json();
+  // 1. В самом верху скрипта добавь это:
+let pollingInterval = null; 
 
-                console.log("Статус заказа:", data.status);
-
-                // Проверяем оба варианта (в зависимости от того, что пишет бэкенд в БД)
-                if (data.status === 'paid' || data.status === 'CONFIRMED') {
-                    clearInterval(pollingInterval);
-                    
-                    // Эффекты успеха
-                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-                    explodeStar(); // Наша 3D анимация
-
-                    tg.showAlert("Оплата получена! Спасибо за покупку.");
-                    
-                    // Закрываем приложение через 3 секунды
-                    setTimeout(() => tg.close(), 3000);
-                }
-            } catch(e) {
-                console.error("Ошибка опроса:", e);
-            }
-        }, 3000); // Опрос каждые 3 секунды
+function startPolling(userId) {
+    // Очищаем старый интервал, если он был
+    if (window.pollingInterval) {
+        clearInterval(window.pollingInterval);
     }
+
+    window.pollingInterval = setInterval(async () => {
+        try {
+            // Используем твой актуальный домен cloudflare
+            const res = await fetch(`https://flying-refresh-navy-bedding.trycloudflare.com/check-payment?userId=${userId}`);
+            const data = await res.json();
+
+            console.log("Статус из БД:", data.status);
+
+            if (data.status === 'paid' || data.status === 'CONFIRMED') {
+                clearInterval(window.pollingInterval);
+                
+                // Эффекты
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                if (typeof explodeStar === 'function') explodeStar();
+
+                tg.showAlert("Оплата принята! Звезды/Премиум будут зачислены.");
+                setTimeout(() => tg.close(), 3000);
+            }
+        } catch (e) {
+            console.error("Ошибка полинга:", e);
+        }
+    }, 3000);
+}
 
     function handleSuccess() {
       explodeStar();
@@ -706,6 +708,7 @@ function backTo(step) {
   </script>
 </body>
 </html>
+
 
 
 
