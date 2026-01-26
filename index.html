@@ -298,28 +298,39 @@
       </div>
 
       <div id="tab-premium" class="tab-content">
-          <div class="card" id="premium-step-1">
-              <div class="target-toggle">
-                  <div class="active" onclick="setTarget('premium', 'me', this)">КУПИТЬ СЕБЕ</div>
-                  <div onclick="setTarget('premium', 'friend', this)">ДЛЯ ДРУГА</div>
+          <div id="premium-step-1" class="ui-layer">
+              <div class="card">
+                  <div class="target-toggle">
+                      <div class="active" onclick="setTarget('premium', 'me', this)">КУПИТЬ СЕБЕ</div>
+                      <div onclick="setTarget('premium', 'friend', this)">ДЛЯ ДРУГА</div>
+                  </div>
+                  <input type="text" id="premiumFriendUser" class="username-input" placeholder="@username">
+      
+                  <div class="premium-grid">
+                      <div class="premium-option" onclick="selectPremium(3, 1100, this)">
+                          <span class="months">3 МЕС.</span>
+                          <span class="price">1100 ₽</span>
+                      </div>
+                      <div class="premium-option active" onclick="selectPremium(6, 1600, this)">
+                          <span class="months">6 МЕС.</span>
+                          <span class="price">1600 ₽</span>
+                      </div>
+                      <div class="premium-option" onclick="selectPremium(12, 3000, this)">
+                          <span class="months">12 МЕС.</span>
+                          <span class="price">3000 ₽</span>
+                      </div>
+                  </div>
+                  <button class="btn btn-premium" onclick="toPremiumStep2()">Продолжить</button>
               </div>
-              <input type="text" id="premiumFriendUser" class="username-input" placeholder="@username">
-
-              <div class="premium-grid">
-                  <div class="premium-option" onclick="selectPremium(3, 13, this)">
-                      <span class="months">3 МЕС.</span>
-                      <span class="price">$13.00</span>
-                  </div>
-                  <div class="premium-option active" onclick="selectPremium(6, 16, this)">
-                      <span class="months">6 МЕС.</span>
-                      <span class="price">$16.00</span>
-                  </div>
-                  <div class="premium-option" onclick="selectPremium(12, 30, this)">
-                      <span class="months">12 МЕС.</span>
-                      <span class="price">$30.00</span>
-                  </div>
+          </div>
+      
+          <div id="premium-step-2" class="ui-layer hidden">
+              <div class="card">
+                  <div style="text-align:center; opacity:0.6; margin-bottom:20px; font-size:12px; text-transform:uppercase;">Выберите способ</div>
+                  <button class="btn btn-sbp" onclick="processPremiumPay('sbp')">💠 Система СБП</button>
+                  <button class="btn btn-crypto" onclick="processPremiumPay('crypto')">₿ Криптовалюта</button>
+                  <button style="background:none; border:none; color:#555; width:100%; margin-top:15px;" onclick="backToPremium(1)">Назад</button>
               </div>
-              <button class="btn btn-premium" onclick="processPremiumPay()">Купить Premium</button>
           </div>
       </div>
 
@@ -409,30 +420,41 @@
             targetUsername: targetUsername
         });
     }
-
-   async function processPremiumPay() {
-        // Определяем юзернейм
-        let targetUsername = null;
-        if (purchaseTarget.premium === 'friend') {
-            targetUsername = document.getElementById('premiumFriendUser').value;
-            if (!targetUsername) {
-                tg.showAlert("Пожалуйста, введите @username друга");
-                return;
-            }
-        }
-
-        // Показываем лоадер
-        showLayer(3); 
-        
-        // Собираем пейлоад
-        await createPaymentRequest({
-            userId: tg.initDataUnsafe?.user?.id || 0,
-            orderType: 'premium',
-            months: premiumOrder.months,
-            method: 'sbp', // Для премиума пока только СБП по твоей логике
-            targetUsername: targetUsername
-        });
+   function toPremiumStep2() {
+    document.getElementById('premium-step-1').classList.add('hidden');
+    document.getElementById('premium-step-2').classList.remove('hidden');
+    document.getElementById('premium-step-2').classList.add('fade-in');
+    moveCamera(3.5);
+}
+   function backToPremium(step) {
+    if (step === 1) {
+        document.getElementById('premium-step-2').classList.add('hidden');
+        document.getElementById('premium-step-1').classList.remove('hidden');
+        moveCamera(5);
     }
+}
+
+  async function processPremiumPay(method) {
+    let targetUsername = null;
+    if (purchaseTarget.premium === 'friend') {
+        targetUsername = document.getElementById('premiumFriendUser').value;
+        if (!targetUsername) {
+            tg.showAlert("Пожалуйста, введите @username друга");
+            return;
+        }
+    }
+
+    // Скрываем выбор метода, показываем общий экран загрузки (step-3)
+    document.getElementById('premium-step-2').classList.add('hidden');
+    
+    await createPaymentRequest({
+        userId: tg.initDataUnsafe?.user?.id || 0,
+        orderType: 'premium',
+        months: premiumOrder.months,
+        method: method, // Теперь метод передается динамически
+        targetUsername: targetUsername
+    });
+}
 
    async function createPaymentRequest(payload) {
         // Проверка данных перед отправкой
@@ -626,3 +648,4 @@
   </script>
 </body>
 </html>
+
