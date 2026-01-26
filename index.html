@@ -382,6 +382,60 @@
       showLayer(2);
       moveCamera(3.5);
     }
+   async function handlePayment() {
+        const methodCard = document.querySelector('.method-card.active');
+        if (!methodCard) {
+            alert('Пожалуйста, выберите способ оплаты');
+            return;
+        }
+
+        const method = methodCard.dataset.method;
+        const btn = document.querySelector('.pay-button');
+        const originalText = btn.innerText;
+
+        // Собираем данные
+        const orderData = {
+            userId: window.Telegram.WebApp.initDataUnsafe?.user?.id || 6238117319,
+            orderType: currentType, // 'stars' или 'premium'
+            starsCount: currentType === 'stars' ? selectedStars : null,
+            months: currentType === 'premium' ? selectedMonths : null,
+            method: method,
+            targetUsername: document.getElementById('gift-username')?.value || null
+        };
+
+        try {
+            btn.disabled = true;
+            btn.innerText = 'Генерация ссылки...';
+
+            const response = await fetch('/create-mini-app-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+
+            const result = await response.json();
+            console.log("Ответ сервера:", result);
+
+            // ПРОВЕРКА: бэкенд присылает payUrl
+            if (result.success && result.payUrl) {
+                // Используем API Телеграма для открытия ссылок
+                window.Telegram.WebApp.openLink(result.payUrl);
+                
+                // На всякий случай дублируем для тестов в браузере
+                if (!window.Telegram.WebApp.initData) {
+                    window.location.href = result.payUrl;
+                }
+            } else {
+                alert('Ошибка: ' + (result.message || 'не удалось получить ссылку'));
+            }
+        } catch (e) {
+            console.error("Ошибка запроса:", e);
+            alert('Ошибка связи с сервером');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
+    }
 
     async function processPay(method) {
         const username = purchaseTarget.stars === 'friend' ? document.getElementById('starsFriendUser').value : "";
@@ -572,3 +626,4 @@
   </script>
 </body>
 </html>
+
