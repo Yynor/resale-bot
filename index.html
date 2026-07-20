@@ -458,55 +458,65 @@
     });
 }
 
-   async function createPaymentRequest(payload) {
-        if (payload.orderType === 'premium' && !payload.months) {
-            tg.showAlert("Пожалуйста, выберите тариф Premium!");
-            return;
+  async function createPaymentRequest(payload) {
+    if (payload.orderType === 'premium' && !payload.months) {
+        tg.showAlert("Пожалуйста, выберите тариф Premium!");
+        return;
+    }
+
+    showLayer(3); 
+    document.getElementById('pay-loader').classList.remove('hidden');
+    document.getElementById('pay-content').classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE}/create-mini-app-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        // Проверяем, успешный ли HTTP-статус (200-299)
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Сервер вернул код ${response.status}: ${errorText || 'Без описания'}`);
         }
 
-        showLayer(3); 
-        document.getElementById('pay-loader').classList.remove('hidden');
-        document.getElementById('pay-content').classList.add('hidden');
+        const data = await response.json();
 
-        try {
-            // Запрос на твой C# бэкенд или промежуточный сервис для генерации инвойса
-            const response = await fetch(`${API_BASE}/create-mini-app-payment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+        if (data.success && data.payUrl) {
+            document.getElementById('pay-loader').classList.add('hidden');
+            document.getElementById('pay-content').classList.remove('hidden');
 
-            const data = await response.json();
+            const finalPrice = data.amount || (payload.orderType === 'stars' ? payload.starsCount * 1.3 : premiumOrder.price);
+            document.getElementById('finalPrice').innerText = Math.round(finalPrice) + " ₽";
+            
+            const payLink = document.getElementById('payLink');
+            
+            payLink.onclick = function(e) {
+                e.preventDefault();
+                if (tg.openLink) {
+                    tg.openLink(data.payUrl);
+                } else {
+                    window.open(data.payUrl, '_blank');
+                }
+            };
 
-            if (data.success && data.payUrl) {
-                document.getElementById('pay-loader').classList.add('hidden');
-                document.getElementById('pay-content').classList.remove('hidden');
-
-                const finalPrice = data.amount || (payload.orderType === 'stars' ? payload.starsCount * 1.3 : premiumOrder.price);
-                document.getElementById('finalPrice').innerText = Math.round(finalPrice) + " ₽";
-                
-                const payLink = document.getElementById('payLink');
-                
-                payLink.onclick = function(e) {
-                    e.preventDefault();
-                    if (tg.openLink) {
-                        tg.openLink(data.payUrl);
-                    } else {
-                        window.open(data.payUrl, '_blank');
-                    }
-                };
-
-                // Запускаем опрос нашего воркера
-                startPolling(data.guid || data.payment_id);
-            } else {
-                throw new Error(data.message || "Ошибка сервера при создании счета");
-            }
-        } catch (e) {
-            console.error("Критическая ошибка:", e);
-            tg.showAlert("Ошибка: " + e.message);
-            backTo(payload.orderType === 'stars' ? 2 : 1);
+            startPolling(data.guid || data.payment_id);
+        } else {
+            throw new Error(data.message || "Ошибка сервера при создании счета");
+        }
+    } catch (e) {
+        console.error("Критическая ошибка:", e);
+        tg.showAlert("Ошибка: " + e.message);
+        // Возвращаем пользователя назад на шаг выбора
+        if (payload.orderType === 'stars') {
+            showLayer(2);
+        } else {
+            document.getElementById('premium-step-2').classList.add('hidden');
+            document.getElementById('premium-step-1').classList.remove('hidden');
         }
     }
+}
 
 function startPolling(txId) {
     if (window.pollingInterval) {
